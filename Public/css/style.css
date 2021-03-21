@@ -1,0 +1,14 @@
+
+#chat_box_controls {
+    background-color: bisque;
+}
+
+#chat_msg {
+    display: inline;
+    width: 95%;
+}
+
+#msg_send_btn {
+    display: inline;
+    width: 4%;
+}
