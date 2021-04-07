@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Chat App - Register</title>
+</head>
+<body style="background-color: #3599dc;">
+
+    <div class="auth_form_area">
+        <label class="auth_title">Sign Up</label><br>
+        <input type="text" name="signup_email" id="register_email" class="auth_textbox" placeholder="Email"><br>
+        <input type="password" name="signup_pss" id="register_pss" class="auth_textbox" placeholder="Password"><br>
+        <button class="auth_submit" onclick="registerUser()">Register</button>
+        <a href="/login">Already have an account ? Login</a>
+        <p class="auth_error_alert"></p>
+    </div>
+
+    <script src="./scripts/Register.js"></script>
+</body>
+</html>
