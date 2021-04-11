@@ -1,6 +1,7 @@
 
 /********************************Imports*********************/
 import express from "express";
+import {verifyUserToken} from "../Middleware"
 
 /********************************Variables*********************/
 const router = express.Router(); //Creating a router
@@ -22,7 +23,13 @@ router.get("/login", (req,resp) => {
     /*Displays the login page*/
 
     resp.render("Login");
-})
+});
+
+router.get("/home", (req,resp) => {
+    /*Displays the home page*/
+
+    resp.render("Home");
+});
 
 /********************************Exports*********************/
 export {router as WebsiteRouter};

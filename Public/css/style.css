@@ -59,3 +59,44 @@ body{
     display: block;
     margin-bottom: 10px;
 }
+
+#home_page_controls
+{
+    display: block;
+    position: absolute;
+    top: 36%;
+    left: 39%;
+    padding: 10px;
+    background-color: white;
+    border-radius: 10px;
+}
+
+#create_room_btn
+{
+    display: block;
+    margin: auto;
+    font-size: larger;
+}
+
+.home_page_txt 
+{
+    display: block;
+    text-align: center;
+    font-size: larger;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+#room_id_txtbx
+{
+    display: block;
+    font-size: larger;
+    margin-bottom: 10px;
+}
+
+#join_room_btn
+{
+    display: block;
+    margin: auto;
+    font-size: larger;
+}

@@ -1,7 +1,7 @@
 
 /******************************Variables******************** */
-const registerUrl = "http://localhost:5000/user/addusercreds";
-const profileUrl = "http://localhost:5000/profile";
+const registerUrl = "user/addusercreds";
+const profileUrl = "profile";
 let errorTextP = undefined;
 
 /******************************Click Events******************** */
