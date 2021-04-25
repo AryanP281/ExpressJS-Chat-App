@@ -9,13 +9,18 @@
 </head>
 <body style="background-color: #3599dc;">
     
+    <div id="home_action_bar" class="action_bar">
+        <button id="logout_btn" onclick="logout()">Logout</button>
+    </div>
+    
     <div id="home_page_controls">
-        <button id="create_room_btn">Create Room</button>
+        <button id="create_room_btn" onclick="createRoom()">Create Room</button>
         <label class="home_page_txt">Or</label>
         <label class="home_page_txt">Join Room</label>
-        <input id="room_id_txtbx" type="text" placeholder="Meeting id">
-        <button id="join_room_btn">Join Room</button>
+        <input id="room_id_txtbx" type="text" placeholder="Room Id">
+        <button id="join_room_btn" onclick="joinRoom()">Join Room</button>
     </div>
 
+    <script src="./scripts/Home.js"></script>
 </body>
 </html>

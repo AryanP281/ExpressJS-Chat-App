@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Chat APP</title>
+</head>
+<body>
+    
+    <div id="chat_action_bar" class="action_bar">
+        <label id="chatroom_id"></label>
+        <button id="leave_room_btn">Leave Room</button>
+    </div>
+
+    <div id="chat_controls">
+        <input id="chat_box">
+        <button id="send_msg_btn">Send</button>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="./scripts/Chatroom.js"></script>
+</body>
+</html>

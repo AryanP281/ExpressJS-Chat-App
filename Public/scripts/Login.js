@@ -2,6 +2,7 @@
 /*****************************Variables******************/
 const regex = new RegExp("(.)+(@)(\\D)+(\.)(\\D)+"); //The regex to be used for checking the email format
 const loginUrl = "user/login";
+const homeUrl = "/home"; //The url to the home page
 
 /*****************************Event Handlers******************/
 function loginUser()
@@ -26,7 +27,11 @@ function loginUser()
             if(!data.success)
                 displayErrorMessage(data.error);
             else
-                console.log(data.token);
+            {
+                //Saving the token as cookie and redirecting
+                //document.cookie = `token=${data.token}`;
+                window.location.replace(homeUrl);
+            }
         })
         .catch((err) => console.log(err));
 }

@@ -68,12 +68,16 @@ function addUserCreds(req : EXPRESS.Request, resp : EXPRESS.Response) : void
                     return UserCredsModel.updateOne({_id:credsId}, {$set:{userFK:userObj._id}});
                 })
                 .then(() => {
-                    resp.status(200).json({token:jwt.sign({id:userObjId}, JWT_SECRET_KEY)})
+                   //Setting the token cookie
+                    resp.cookie("token", jwt.sign(userObjId,JWT_SECRET_KEY), {httpOnly:true});
+
+                    //Sending success response
+                    resp.status(200).json({success:true});
                 })
                 .catch((error) => resp.status(500).json({success:false,error}));
             }
             else
-                resp.status(200).json({error:"Email already registered"}); //Sending error response
+                resp.status(200).json({success:false,error:"Email already registered"}); //Sending error response
         })
 
         
@@ -89,10 +93,13 @@ function updateUserDetails(req : EXPRESS.Request, resp : EXPRESS.Response) : voi
     /*Updates the details of the given user*/
 
     const userId : string = req.body["userId"];
-
+    
     //Creating promise to update the user details
     const updateUserDetailsPromise = UserModel.updateOne({_id:userId}, {$set:{username:req.body["username"]}});
-    updateUserDetailsPromise.then((res) => resp.status(200).json({success:true}))
+    updateUserDetailsPromise.then((res) => {
+        console.log(res)
+        //resp.status(200).json({success:true})
+    })
         .catch((err) => resp.status(500).json({success:false,error:err}));
 }
 
@@ -102,10 +109,14 @@ function getUserDetails(req : EXPRESS.Request, resp : EXPRESS.Response)
 
     const userId : string = req.body["userId"];
 
-    //Creating promise to retrieve user details
-    const getUserDetailsPromise = UserModel.findOne({_id:userId});
-    getUserDetailsPromise.then((user) => resp.status(200).json({success:true,user:{username:user?.get("username")}}))
-        .catch((err) => resp.status(500).json({success:false,error:err}));
+    //Creating promise to retrieve the user details
+    const getUserPKPromise = UserCredsModel.findOne({_id:userId});
+    getUserPKPromise.then((doc) => {
+        //Getting the user model
+        return UserModel.findOne({_id:doc?.get("userFK")});
+    })
+    .then((userDoc) => resp.status(200).json({success:true, username: userDoc?.get("username")}))
+    .catch((err) => resp.status(200).json({success:false,error:err}));
 
 }
 
@@ -126,7 +137,13 @@ function checkCreds(req : EXPRESS.Request, resp : EXPRESS.Response)
         {
             //Checking if the passwords match
             if(bcrypt.compareSync(password, res.get("password")))
-                resp.status(200).json({success:true,token:jwt.sign({id:res._id}, JWT_SECRET_KEY)});
+            {
+                //Setting the token cookie
+                resp.cookie("token", jwt.sign(res._id,JWT_SECRET_KEY), {httpOnly:true});
+
+                //Sending success response
+                resp.status(200).json({success:true});
+            }
             else
                 resp.status(200).json({success:false,error:"Incorrect password"});
         }
@@ -135,5 +152,25 @@ function checkCreds(req : EXPRESS.Request, resp : EXPRESS.Response)
 
 }
 
+function logoutUser(req : EXPRESS.Request, resp : EXPRESS.Response)
+{
+    /*Logs the user out by clearing all set cookies*/
+
+    try
+    {
+        //Deleting the set cookies
+        Object.keys(req.cookies).forEach((cookieKey : string) => {
+            resp.clearCookie(cookieKey); //Removing the cookie
+        })
+
+        resp.status(200).json({success:true});
+    }
+    catch(err)
+    {
+        resp.status(200).json({success:false,error:err});
+    }
+    
+}
+
 /********************************Exports*********************/
-export {updateUserDetails, addUserCreds, getUserDetails, checkCreds};
+export {updateUserDetails, addUserCreds, getUserDetails, checkCreds, logoutUser};

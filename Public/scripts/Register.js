@@ -22,24 +22,18 @@ async function registerUser()
         body: JSON.stringify({email,password:pss})
     });
 
-    //Checking the response
-    if(fetchResponse.status == 200)
-    {
-        //Getting the token
-        const respData = await fetchResponse.json();
+    //Getting the response data
+    const responseData = await fetchResponse.json();
 
-        //Saving the token in cookie
-        document.cookie = `token=${respData.token}`
-        
+    //Checking the response
+    if(responseData.success)    
         window.location.replace(profileUrl); //Redirecting to the profile page
-    }
     else
     {
-        const errorMsg = await fetchResponse.json(); //Getting the error message
         //Displaying the error message
         if(errorTextP === undefined)
             errorTextP = document.querySelector(".auth_error_alert");
-        errorTextP.textContent = errorMsg.error
+        errorTextP.textContent = responseData.error;
     }
 
 }

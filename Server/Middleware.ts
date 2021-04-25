@@ -9,8 +9,8 @@ function verifyUserToken(req : EXPRESS.Request, resp : EXPRESS.Response, next : 
 {
     /*Middleware for verifing the user token*/
 
-    const token : string | undefined | string[] = req.headers['x-access-token']; //Getting the token from the header
-    if(typeof token !== "string")
+    const token : string  = req.cookies.token; //Getting the token from the header
+    if(token === undefined)
         resp.status(403).json({auth:false,message:"No token provided"});
     else
     {
@@ -25,7 +25,7 @@ function verifyUserToken(req : EXPRESS.Request, resp : EXPRESS.Response, next : 
         })
 
         jwtVerificiationPromise.then((decoded) => {
-        req.body["userId"] = decoded.id; //Adding the user id to the request
+        req.body["userId"] = decoded; //Adding the user id to the request
         next();
         })
         .catch((err) => resp.status(500).json({auth:false,message:err}));
