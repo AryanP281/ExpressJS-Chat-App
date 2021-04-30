@@ -9,7 +9,7 @@ const router : express.Router = express.Router();
 
 /*******************************Routes***************************/
 router.get("/createroom", verifyUserToken, createRoom);
-router.post("/joinRoom", verifyUserToken, joinRoom);
+router.post("/joinroom", verifyUserToken, joinRoom);
 
 /*******************************Exports***************************/
 export {router as ChatroomApiRouter};

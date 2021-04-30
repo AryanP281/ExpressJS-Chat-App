@@ -2,6 +2,7 @@
 /*************************Variables*******************/
 const serverSocketUrl = "http://localhost:5000";
 const homeUrl = "/home";
+const msg_list_div = document.getElementById("chat_msgs_div"); //The div to display the chat messages
 
 /*************************Funtions*******************/
 function parseCookies()
@@ -18,6 +19,34 @@ function parseCookies()
     })
 
     return parsedCookies;
+}
+
+/*************************Event Handlers*******************/
+function sendMessage()
+{
+    /*Sends the entered message*/
+
+    //Getting the entered message
+    const textBox = document.getElementById("chat_box");
+    const message = textBox.value;
+
+    //Emitting the message
+    socket.emit("sendMessage", {message});
+
+    //Clearing the text box
+    textBox.value = "";
+}
+
+function displayMessage(msg)
+{
+    /*Displays the received message*/
+
+    const html = `<div class="chat_msg_box">
+        <span class="chat_msg_txt"> ${msg.message} </span>
+    </div>
+    `;
+
+    msg_list_div.insertAdjacentHTML("beforeend", html);
 }
 
 /*************************Script*******************/
@@ -39,10 +68,13 @@ const socket = io(serverSocketUrl, {
 });
 
 //Socket connected to room
-io.on("Room Connection", (resp) => {
+socket.on("Room Connection", (resp) => {
+  
     if(!resp.success)
         window.location.replace(homeUrl);
     else
         alert("Room connection successful");
 })
 
+//Get message
+socket.on("getMessage", displayMessage); 

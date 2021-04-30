@@ -94,7 +94,7 @@ function joinRoom()
         alert("Enter room id to join");
 
     //Creating promise for api request
-    const joinRoomPromise = fetch(joinRoom, {
+    const joinRoomPromise = fetch(joinRoomUrl, {
         method:"POST",
         headers: {
             "Content-Type": "application/json"
@@ -102,11 +102,12 @@ function joinRoom()
         body:JSON.stringify({roomPublicId})
     });
     joinRoomPromise.then((resp) => resp.json())
-        .then((data) => {
-            if(data.success)
-                redirectToChatRoom(data);
+        .then((respData) => {
+            if(respData.success)
+                window.location.replace(chartoomUrl);
             else
                 alert(`Failed to join room - ${data.error}`);
         })
+        .catch((err) => alert(err))
 }
 

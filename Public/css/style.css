@@ -131,6 +131,29 @@ body{
     margin: 10px auto;
 }
 
+#chat_msgs_div
+{
+    display: block;
+    position:absolute;
+    top: 15%;
+    height: 77%;
+    width: 100%;
+    overflow-y: scroll;
+}
+
+.chat_msg_box
+{
+    display: block;
+    margin-bottom: 10px;
+}
+
+.chat_msg_txt
+{
+    background-color: white;
+    padding: 5px;
+    border-radius: 2px;
+}
+
 #chat_controls
 {
     display: block;
