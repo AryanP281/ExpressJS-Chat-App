@@ -5,6 +5,8 @@
 const registerUrl = "http://localhost:5000/register";
 const userDetailsGetUrl = "http://localhost:5000/user/getuser";
 const userDetailsUpdateUrl = "http://localhost:5000/user/updateuser";
+const errorMessageLabel = document.querySelector(".auth_error_alert");
+const maxUsernameSize = 20;
 
 /********************Functions****************/
 function updateDetails()
@@ -13,6 +15,13 @@ function updateDetails()
 
     //Getting the entered details
     const user = {username:document.getElementById("username_box").value};
+
+    //Checking if the username size is valid
+    if(user.username.length > 20)
+    {
+        errorMessageLabel.textContent = "Username cannot have more than 20 characters";
+        return;
+    }
 
     //POST request for updating the user details
     const updateDetailsPromise = fetch(userDetailsUpdateUrl, {
@@ -29,7 +38,7 @@ function updateDetails()
             if(!respData.success)
                 alert(respData.error);
         })
-        .catch((err) => console.log(err));
+        .catch((err) => errorMessageLabel.textContent = err);
 }
 
 function setUserDetails(user)

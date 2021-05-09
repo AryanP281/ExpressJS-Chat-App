@@ -149,9 +149,18 @@ body{
 
 .chat_msg_txt
 {
+    display: table;
     background-color: white;
-    padding: 5px;
+    padding: 20px;
     border-radius: 2px;
+}
+
+.chat_msg_title_txt
+{
+    display: table;
+    background-color: white;
+    padding: 10px;
+    font-weight: bold;
 }
 
 #chat_controls

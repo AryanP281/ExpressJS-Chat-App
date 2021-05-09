@@ -106,7 +106,7 @@ function joinRoom()
             if(respData.success)
                 window.location.replace(chartoomUrl);
             else
-                alert(`Failed to join room - ${data.error}`);
+                alert(`Failed to join room - ${respData.error}`);
         })
         .catch((err) => alert(err))
 }

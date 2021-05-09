@@ -4,26 +4,7 @@ import io from "socket.io"
 import {addToRoom} from "./ChatroomController"
 import jwt from "jsonwebtoken"
 import { JWT_SECRET_KEY } from "../Config/App";
-
-/*******************************Functions*************************/
-function parseCookies(cookieStr : string)
-{
-    /*Creates an object containing the cookies in the given cookie string*/
-    
-    const parsedCookies : any = {}; //The parsed cookies as key value pair
-
-    //Separating the cookies
-    const separatedCookies : string[] = cookieStr.split(';');
-
-    //Getting the cookie key and values
-    separatedCookies.forEach((cookie) => {
-        const keyValue = cookie.split('=');
-        parsedCookies[keyValue[0].trim()] = keyValue[1];
-    })
-
-    return parsedCookies;
-}
-
+import {parseCookies} from "../Services";
 
 /*******************************Event Handlers*************************/
 function connectClient(socket : io.Socket)
@@ -61,12 +42,15 @@ function connectClient(socket : io.Socket)
    })
    .then((userId : any) => {
         //Adding the socket to the room
-        addToRoom(socket, roomId, userId, parsedCookies.roomPublicId);
+        const result : {success : boolean, error : string} = addToRoom(socket, userId, roomId);
 
-        //Sending success message
-        socket.emit("Room Connection", {success:true});
+        //Sending result message
+        socket.emit("Room Connection", result);
    })
-   .catch((err) => socket.emit("Room Connection", {success:false,error:err}));
+   .catch((err) => {
+        console.log(err)
+        socket.emit("Room Connection", {success:false,error:err})
+   });
 
 }
 

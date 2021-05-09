@@ -31,7 +31,7 @@ function sendMessage()
     const message = textBox.value;
 
     //Emitting the message
-    socket.emit("sendMessage", {message});
+    socket.emit("sendMessage", {message, username});
 
     //Clearing the text box
     textBox.value = "";
@@ -42,7 +42,8 @@ function displayMessage(msg)
     /*Displays the received message*/
 
     const html = `<div class="chat_msg_box">
-        <span class="chat_msg_txt"> ${msg.message} </span>
+        <div class="chat_msg_title_txt"> ${msg.username}</div>
+        <div class="chat_msg_txt"> ${msg.message} </div>
     </div>
     `;
 
@@ -53,6 +54,9 @@ function displayMessage(msg)
 
 //Getting the stored cookies
 const parsedCookies = parseCookies();
+
+//Getting the username
+const username = decodeURIComponent(parsedCookies.username);
 
 //Displaying the room id
 document.getElementById("chatroom_id").textContent = `Room : ${parsedCookies.roomPublicId}`;
@@ -71,7 +75,7 @@ const socket = io(serverSocketUrl, {
 socket.on("Room Connection", (resp) => {
   
     if(!resp.success)
-        window.location.replace(homeUrl);
+        console.log(resp)
     else
         alert("Room connection successful");
 })

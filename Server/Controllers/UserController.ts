@@ -95,12 +95,10 @@ function updateUserDetails(req : EXPRESS.Request, resp : EXPRESS.Response) : voi
     const userId : string = req.body["userId"];
     
     //Creating promise to update the user details
-    const updateUserDetailsPromise = UserModel.updateOne({_id:userId}, {$set:{username:req.body["username"]}});
-    updateUserDetailsPromise.then((res) => {
-        console.log(res)
-        //resp.status(200).json({success:true})
-    })
-        .catch((err) => resp.status(500).json({success:false,error:err}));
+    const updateUserDetailsPromise = UserCredsModel.findOne({_id:userId});
+    updateUserDetailsPromise.then((creds) => UserModel.updateOne({_id:creds!.get("userFK")}, {$set:{username:req.body["username"]}}))
+    .then((res) => resp.status(200).json({success:true}))
+    .catch((err) => resp.status(500).json({success:false,error:err}));
 }
 
 function getUserDetails(req : EXPRESS.Request, resp : EXPRESS.Response)
@@ -128,6 +126,7 @@ function checkCreds(req : EXPRESS.Request, resp : EXPRESS.Response)
     const password : string = req.body.password;
 
     //Checking if email exists
+    let userCredsId : string = "";
     const emailCheckPromise = UserCredsModel.findOne({email:email});
     emailCheckPromise.then((res) => {
         //Checking if email exists
@@ -138,17 +137,48 @@ function checkCreds(req : EXPRESS.Request, resp : EXPRESS.Response)
             //Checking if the passwords match
             if(bcrypt.compareSync(password, res.get("password")))
             {
-                //Setting the token cookie
-                resp.cookie("token", jwt.sign(res._id,JWT_SECRET_KEY), {httpOnly:true});
-
-                //Sending success response
-                resp.status(200).json({success:true});
+                userCredsId = res._id;
+                return UserModel.findOne({_id: res.get("userFK")});
             }
             else
                 resp.status(200).json({success:false,error:"Incorrect password"});
         }
     })
-    .catch((err) => resp.status(500).json({success:false,error:err}));
+    .then((userDetails) => {
+        try
+        {
+            //Checking if the user details were successfully retrieved
+            if(userDetails === null)
+                throw new Error("");
+            else
+            {
+                //Setting the token cookie
+                resp.cookie("token", jwt.sign(userCredsId,JWT_SECRET_KEY), {httpOnly:true});
+                //Setting the username cookie
+                resp.cookie("username", userDetails!.get("username"));
+
+                //Sending the response
+                resp.status(200).json({success:true});
+            }
+            
+        }
+        catch(err)
+        {
+            //Creating the user details entry
+            const userCreationPromise = UserModel.create({username:""});
+            userCreationPromise.then((userObj) => UserCredsModel.updateOne({_id : userCredsId}, {$set:{userFK:userObj._id}}))
+            .then((res) => {
+                //Setting the token cookie
+                resp.cookie("token", jwt.sign(userCredsId,JWT_SECRET_KEY), {httpOnly:true});
+                //Setting the username cookie
+                resp.cookie("username", userDetails!.get("username"));
+
+                //Sending the response
+                resp.status(200).json({success:true});
+            })
+        }
+    })
+    .catch((err) => resp.status(200).json({success:false, error: err}));
 
 }
 
