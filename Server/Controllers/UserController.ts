@@ -2,8 +2,8 @@
 /********************************Imports*********************/
 import mongoose from "mongoose"
 import EXPRESS from "express";
-import UserModel from "../Models/User"
-import UserCredsModel from "../Models/UserCreds"
+import UserModel from "../Models/UserDbModel"
+import UserCredsModel from "../Models/UserCredsDbModel"
 import bcrypt from "bcrypt"
 import {JWT_SECRET_KEY} from "../Config/App"
 import jwt from "jsonwebtoken";

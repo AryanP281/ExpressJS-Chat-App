@@ -33,6 +33,7 @@ expressApp.use("/chatroom", ChatroomApiRouter);
 const httpServer : HTTP.Server = HTTP.createServer(expressApp); //Creating the http server
 httpServer.listen(SERVER_PORT, () => console.log(`HTTP Server started on port ${SERVER_PORT}`));
 
+
 //Initializing socket io connection
 const io = new SOCKET.Server(httpServer);
 

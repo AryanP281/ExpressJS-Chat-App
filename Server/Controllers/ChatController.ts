@@ -42,10 +42,10 @@ function connectClient(socket : io.Socket)
    })
    .then((userId : any) => {
         //Adding the socket to the room
-        const result : {success : boolean, error : string} = addToRoom(socket, userId, roomId);
-
-        //Sending result message
-        socket.emit("Room Connection", result);
+        const result : Promise<any> = addToRoom(socket, userId, roomId);
+        result.then((resp) => {
+            socket.emit("Room Connection", resp);
+        })
    })
    .catch((err) => {
         console.log(err)

@@ -3,6 +3,11 @@
 const serverSocketUrl = "http://localhost:5000";
 const homeUrl = "/home";
 const msg_list_div = document.getElementById("chat_msgs_div"); //The div to display the chat messages
+const scrollCheckTimeout = 1000; //The time interval at which to check the scroll status
+let paginationSemaphore = false; //A semaphore to prevent multiple page requests
+
+let currPage;
+let nextPage;
 
 /*************************Funtions*******************/
 function parseCookies()
@@ -50,6 +55,61 @@ function displayMessage(msg)
     msg_list_div.insertAdjacentHTML("beforeend", html);
 }
 
+function msgListScroll()
+{
+    /*Handles the message list scroll event*/
+
+    const scrollCheckPromise = new Promise((resolve) => {
+        setTimeout(resolve, scrollCheckTimeout);
+    }); //The promise to check the scroll status after the given timeout period 
+    
+    scrollCheckPromise.then(() => {
+        
+        //Checking the scroll status
+        if(!paginationSemaphore)
+        {
+            if(msg_list_div.scrollTop <= 200)
+            {
+                paginationSemaphore = false;
+                loadPrevPage();
+            }
+            else if(Math.abs(msg_list_div.scrollHeight - msg_list_div.scrollTop - msg_list_div.clientHeight) <= 200)
+            {
+                paginationSemaphore = true;
+                loadNextPage();
+            }
+        }
+
+        console.log(`${msg_list_div.scrollHeight - msg_list_div.scrollTop}, ${msg_list_div.clientHeight}`);
+
+
+        msgListScroll();
+    })
+}
+
+function loadNextPage()
+{
+    /*Loads the next page of messages*/
+
+    console.log("Loading Next Page");
+    paginationSemaphore = false;
+}
+
+function loadPrevPage()
+{
+    /*Loads the previous page of messages*/
+
+    console.log("Loading the previous page");
+    paginationSemaphore = false;
+}
+
+function leaveRoom()
+{
+    /*Leaves the currently joined room*/
+
+    
+}
+
 /*************************Script*******************/
 
 //Getting the stored cookies
@@ -77,8 +137,15 @@ socket.on("Room Connection", (resp) => {
     if(!resp.success)
         console.log(resp)
     else
-        alert("Room connection successful");
-})
+    {
+        console.log(resp)
+        //Displaying the message history
+        resp.msgs.forEach((msg) => displayMessage(msg));
+    }
+});
 
 //Get message
 socket.on("getMessage", displayMessage); 
+
+//Handles scrolling for pagination
+msgListScroll();

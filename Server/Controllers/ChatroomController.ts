@@ -6,6 +6,7 @@ import {Socket} from "socket.io";
 import jwt from "jsonwebtoken";
 import { JWT_SECRET_KEY } from "../Config/App";
 import {Room} from "../Models/Room";
+import roomDbModel from "../Models/RoomDbModel";
 
 /*******************************Variables***************************/
 const rooms : Map<string,Room> = new Map<string,Room>(); //The rooms mapped using the room id
@@ -18,34 +19,27 @@ function createRoom(req : express.Request, resp : express.Response)
 
     const userId : string = req.body.userId;
 
-    //Generating an id for the room
-    let newRoomId : string; //The id of the new room
-    do
-    {
-        newRoomId = generateRandomString(4);
-    }
-    while(rooms.has(newRoomId));
+    //Generating public id for room
+    const roomPublicId : string = generateRandomString(4);
 
-    //Generating public id for the room
-    let publicId : string; //The public id of the room
-    do
-    {
-        publicId = generateRandomString(4);
-    }
-    while(roomPublicIds.has(publicId));
-    roomPublicIds.set(publicId,newRoomId);
+    //Creating a db entry for the room
+    const roomDbCreationPromise = roomDbModel.create({roomPublicId});
+    roomDbCreationPromise.then((room) => {
+        
+        //Creating a room object for representing room
+        const newRoom : Room = new Room(room._id.toString(), roomPublicId);
+        rooms.set(newRoom.RoomId, newRoom);
+        roomPublicIds.set(roomPublicId, newRoom.RoomId);
 
-    //Creating the room object
-    const newRoom : Room = new Room(newRoomId, publicId, userId);
-    rooms.set(newRoomId, newRoom); //Adding the room to the list of rooms
+        //Generating room token
+        const roomToken : string = jwt.sign(newRoom.RoomId, JWT_SECRET_KEY);
 
-    //Generating room token
-    const roomToken : string = jwt.sign(newRoomId, JWT_SECRET_KEY);
-
-    //Adding the room token and room public id as cookie to response
-    resp.cookie("roomToken", roomToken, {httpOnly:true});
-    resp.cookie("roomPublicId", publicId, {httpOnly:false});
-    resp.status(200).json({success:true});
+        //Adding the room token and room public id as cookie to response
+        resp.cookie("roomToken", roomToken, {httpOnly:true});
+        resp.cookie("roomPublicId", roomPublicId, {httpOnly:false});
+        resp.status(200).json({success:true});
+    })
+    .catch((err) => console.log(err)); 
 
 }
 
@@ -53,37 +47,63 @@ function joinRoom(req : express.Request, resp : express.Response)
 {
     /*Adds the user to the given room*/
     
-    const userId : string = req.body.userId;
+    const publicId : string = req.body.roomPublicId;
 
-    //Checking if the room exists
-    const roomId : string | undefined = roomPublicIds.get(req.body.roomPublicId);
+    //Checking if room is currently active
+    const roomId : string | undefined = roomPublicIds.get(publicId);
     if(roomId === undefined)
-    {    
-        resp.json({success:false,error:"Room not found"});
+    {
+        //Check if room exists in db
+        roomDbModel.findOne({roomPublicId : publicId})
+            .then((roomDoc) => {
+                if(!roomDoc)
+                {
+                    resp.json({success:false,error:"Room not found"});
+                    return;
+                }
+
+                console.log("In db")
+
+                //Opening the room
+                const room : Room = new Room(roomDoc._id.toString(), publicId, roomDoc.get("roomMsgCount"));
+                rooms.set(room.RoomId, room);
+                roomPublicIds.set(publicId, room.RoomId);
+
+                //Generating room token
+                const roomToken : string = jwt.sign(room.RoomId, JWT_SECRET_KEY);
+
+                //Adding the room token and public id as cookie to response
+                resp.cookie("roomToken", roomToken, {httpOnly:true});
+                resp.cookie("roomPublicId", req.body.roomPublicId, {httpOnly:false});
+                resp.status(200).json({success:true});
+            })
+            .catch((err) => console.log(err));
+        
         return;
     }
-
+    
     //Generating room token
+    console.log(roomId)
     const roomToken : string = jwt.sign(roomId, JWT_SECRET_KEY);
 
     //Adding the room token and public id as cookie to response
     resp.cookie("roomToken", roomToken, {httpOnly:true});
     resp.cookie("roomPublicId", req.body.roomPublicId, {httpOnly:false});
     resp.status(200).json({success:true});
-
 }
 
-function addToRoom(socket : Socket,  userId : string, roomId : string) : {success : boolean, error : string}
+function addToRoom(socket : Socket,  userId : string, roomId : string) : 
+Promise<{success:boolean,error:string}> | Promise<{success:boolean,messages:any}>
 {
     /*Adds the user and its socket to the require room*/
 
     const subscribedRoom : Room | undefined = rooms.get(roomId);
     if(subscribedRoom === undefined)
-        return {success : false, error : "Room closed"};
+        return new Promise<any>((resolve) => resolve({success : false, error : "Room closed"}));
 
-    subscribedRoom.addUserSocket(socket, userId);
+    const messagesPromise = subscribedRoom.addUserSocket(socket, userId);
 
-    return {success : true, error : ""};
+    return messagesPromise;
 }
 
 function leaveRoom(req : express.Request, resp : express.Response)
@@ -97,8 +117,8 @@ function removeRoom(room : Room)
 {
     /*Removes the given room*/
 
-    rooms.delete(room.roomId);
-    roomPublicIds.delete(room.roomPublicId);
+    rooms.delete(room.RoomId);
+    roomPublicIds.delete(room.PublicId);
 }
 
 /*******************************Exports***************************/
