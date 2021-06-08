@@ -15,7 +15,8 @@ class Room
 {
     /*****************************Fields*******************************/
     static roomReconnectionTimeout : number = 5000; //After the last user has left the room, time in ms to wait for new connections before deleting the room
-    static pageSize : number = 100;
+    static pageSize : number = 10; 
+    static messageWriteTimeout : number = 10000;
 
     private roomId : string; //The id of the room
     private roomPublicId : string; //The public id of the room
@@ -24,6 +25,8 @@ class Room
     private roomMsgCount : number; //The number of messages in the rooms db
     private msgBuffer : ChatMessage[] = []; //Buffer of the messages yet to be written to db
     private writingToDbSemaphore : boolean = false; //A semaphore to check if the messages are currently being written to the database
+
+    private dbCollection : Collection | undefined = undefined; //The mongodb collection containing the room chat messages
     
     /***************************Constructors************************** */
     constructor(id : string, publicId : string, msgCount : number = 0)
@@ -33,6 +36,10 @@ class Room
         this.roomMsgCount = msgCount;
 
         this.userSockets = new Map<string,Socket>();
+        
+        //Starting the infinite timed loop to save messages to database
+        this.saveMessages();
+
     }
 
     /****************************Methods******************************* */
@@ -51,42 +58,68 @@ class Room
         const roomObjRef = this;
         socket.on("sendMessage", (data) => roomObjRef.broadcastMessage(data, roomObjRef, userId));
         socket.on("disconnect", () => roomObjRef.socketDisconnected(socket, roomObjRef));
+        socket.on("getPrevPage", (data) => roomObjRef.getPrevPage(data, socket, roomObjRef));
+        //socket.on("getNextPage", (data) => roomObjRef.getNextPage(data, socket, roomObjRef));
 
         this.userSockets.set(userId, socket);
 
         //Creating the message history promise
         const prom = new Promise<any>((resolve,reject) => {
-            const currPageMessages : any[] = [];
-            mongodbClient.db().collection(roomObjRef.roomId, (err, collection) => {
-                if(err)
-                    reject(err);
-                else
-                {
-                    const max  = function(x : number, y : number)
+            
+            const sendInitialPage = function(collection : Collection)
+            {
+                const endIndex : number = (roomObjRef.msgBuffer.length) ? (roomObjRef.msgBuffer[roomObjRef.msgBuffer.length-1].index - 
+                    roomObjRef.msgBuffer.length) : roomObjRef.roomMsgCount+1;
+                const startIndex : number = roomObjRef.max(0, endIndex - Room.pageSize);
+                collection.find({index : {$gt : startIndex-1, $lt: endIndex}}).toArray((err, result) => {
+                    if(err)
+                        reject(err);
+                    else
                     {
-                        return (x > y) ? x : y;
+                        roomObjRef.msgBuffer.forEach((msg) => result.push(msg));
+                        resolve({success:true,msgs:result});
                     }
+                });
+            };
 
-                    const endIndex : number = (roomObjRef.msgBuffer.length) ? (roomObjRef.msgBuffer[roomObjRef.msgBuffer.length-1].index - 
-                        roomObjRef.msgBuffer.length) : roomObjRef.roomMsgCount - 1;
-                    const startIndex : number = max(0, endIndex - 200);
-                    collection.find({index : {$gt : startIndex-1, $lt: endIndex+1}}).toArray((err, result) => {
-                        if(err)
-                            reject(err);
-                        else
-                        {
-                            roomObjRef.msgBuffer.forEach((msg) => result.push(msg));
-                            resolve({success:true,msgs:result});
-                        }
-                    });
-                }
-            });
+            if(roomObjRef.dbCollection === undefined)
+            {
+                roomObjRef.getMessagesCollection().then((collection) => sendInitialPage(collection))
+                    .catch((err) => console.log(err));
+            }
+            else
+                sendInitialPage(roomObjRef.dbCollection);
         });
+        
 
         return prom;
     }
 
     /*******************************Functions***************************** */
+    private max(x : number, y : number) : number
+    {
+        /*Returns the smaller of two numbers*/
+
+        return (x < y) ? y : x;
+    }
+
+    private getMessagesCollection() : Promise<Collection>
+    {
+        /*Returns reference to the collection containing the messages in the room*/
+
+        return new Promise<Collection>((resolve,reject) => {
+            mongodbClient.db().collection(this.RoomId, (err, collection) => {
+                if(err)
+                    reject(err);
+                else
+                {
+                    this.dbCollection = collection;
+                    resolve(collection);
+                }
+            });
+        });
+    }
+
     private broadcastMessage(msg : {message : string, username : string}, roomObjRef : Room, senderId : string)
     {
         /*Broadcasts the message to every other socket in the room*/
@@ -97,12 +130,27 @@ class Room
         });
 
         //Pushing the message to buffer
-        roomObjRef.msgBuffer.push(new ChatMessage(roomObjRef.roomMsgCount + roomObjRef.msgBuffer.length, senderId, msg.message, Date()));
+        roomObjRef.msgBuffer.push(new ChatMessage(roomObjRef.roomMsgCount + roomObjRef.msgBuffer.length, msg.username, msg.message, Date()));
+    }
 
-        //Checking if the message buffer is full
-        if(roomObjRef.msgBuffer.length >= 10 && !roomObjRef.writingToDbSemaphore)
-            roomObjRef.writeMessagesToDb(roomObjRef);
+    private saveMessages() : void
+    {
+        /*Saves the messages in the buffer to database*/
 
+        const messageWritePromise : Promise<void> = new Promise((resolve) => {
+            setTimeout(resolve, Room.messageWriteTimeout);
+        });
+
+        const roomObjRef : Room = this;
+        messageWritePromise.then(() => {
+            if(!roomObjRef.writingToDbSemaphore && roomObjRef.msgBuffer.length > 0)
+            {
+                console.log("Writing to database");
+                roomObjRef.writeMessagesToDb(roomObjRef);
+            }
+            
+            roomObjRef.saveMessages();
+        })
     }
 
     private writeMessagesToDb(roomObjRef : Room) : void
@@ -124,25 +172,26 @@ class Room
                     if(err)
                         reject(err);
                     else
-                        resolve(coll);
+                    {
+                        //Creating index on the "index" field
+                        coll.createIndex({index:1},() => resolve(coll));
+                    }
                 });
             });
         }
-        else
+        else if(roomObjRef.dbCollection === undefined)
         {
             //Getting the required collection
-            collectionPromise = new Promise<any>((resolve,reject) => {
-                mongodbClient.db().collection(roomObjRef.roomId, (err, coll) => {
-                    if(err)
-                        reject(err);
-                    else
-                        resolve(coll);
-                });
-            })
+            collectionPromise = roomObjRef.getMessagesCollection();
         }
+        else
+            collectionPromise = new Promise<any>((resolve, reject) => resolve(roomObjRef.dbCollection));
         
         //Writing the messages to the collection
         collectionPromise.then((collection) => {
+            roomObjRef.dbCollection = collection;
+
+            //Inserting chat messages to collection
             collection.insertMany(roomObjRef.msgBuffer)
             
             //Saving the number of messages in the buffer. 
@@ -201,6 +250,54 @@ class Room
 
     }
 
+    private getPrevPage(req : any, socket : Socket, room : Room) : void
+    {
+        /*Returns the previous page to the socket*/
+
+        const startIndex : number = this.max(-1, req.firstPageIndex - Room.pageSize - 1);
+
+        const collectionPromise : Promise<Collection> = new Promise<Collection>((resolve,reject) => {
+            if(room.dbCollection !== undefined)
+                resolve(room.dbCollection);
+            else
+            {
+                room.getMessagesCollection().then((collection) => resolve(collection))
+                    .catch((err) => reject(err));
+            }
+        });
+
+        //Getting the pages from the database
+        collectionPromise.then((collection) => {
+            return collection.find({index : {$gt: startIndex}}).limit(Room.pageSize).toArray();
+        })
+        .then((result) => {
+            socket.emit("prevPage", {success:true, msgs: result});
+        })
+        .catch((err) => {
+            socket.emit("prevPage", {success:false, error: err});
+        });
+    }
+
+    private getNextPage(req : any, socket : Socket, room : Room) : void
+    {
+        /*Returns the next page to the socket*/
+
+        const collectionPromise : Promise<Collection> = new Promise<Collection>((resolve,reject) =>{
+            if(room.dbCollection !== undefined)
+                resolve(room.dbCollection);
+            else
+                room.getMessagesCollection().then((collection) => resolve(collection))
+                    .catch((err) => reject(err));
+        });
+
+        //Getting the pages from the database
+        collectionPromise.then((collection) => collection.find({index : {$gt: req.lastPageIndex}}).limit(Room.pageSize).toArray())
+            .then((results) => {
+                socket.emit("getNextPage", {success:true, msgs:results});
+            })
+            .catch((err) => socket.emit("getNextPage", {success:false, error:err}));
+    }
+
     /***********************************Getters**************************/
     public get RoomId() : string
     {
@@ -218,5 +315,14 @@ class Room
 export {Room};
 
 /*
-
+//Getting the pages from the database
+        collectionPromise.then((collection) => {
+            collection.find({index: {$gt: startIndex}}).limit(Room.pageSize).toArray()
+            .then((result) => {
+                socket.emit("prevPage", {success:true, msgs: result});
+            })
+            .catch((err) => {
+                socket.emit("prevPage", {success:false, error: err});
+            });
+        });
 */

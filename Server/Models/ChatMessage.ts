@@ -16,7 +16,7 @@ class ChatMessage
         this.timestamp = timestamp;
     }
 
-    public getJsonObject() : {index : number,message : string, username : string}
+    public getJsonObject() : {index : number, message : string, username : string}
     {
         const msg : string = this.message;
         const unm : string = this.username;

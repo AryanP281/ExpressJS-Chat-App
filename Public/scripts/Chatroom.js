@@ -4,10 +4,12 @@ const serverSocketUrl = "http://localhost:5000";
 const homeUrl = "/home";
 const msg_list_div = document.getElementById("chat_msgs_div"); //The div to display the chat messages
 const scrollCheckTimeout = 1000; //The time interval at which to check the scroll status
+const pageLimit = 5; //The number of pixels from either end at which to start loading the next page
 let paginationSemaphore = false; //A semaphore to prevent multiple page requests
 
-let currPage;
-let nextPage;
+let firstMsgIndex; //The index of the currently displayed 1st message
+let lastMsgIndex; //The index of the currently displayed last message
+
 
 /*************************Funtions*******************/
 function parseCookies()
@@ -42,7 +44,7 @@ function sendMessage()
     textBox.value = "";
 }
 
-function displayMessage(msg)
+function displayMessage(msg, atEnd)
 {
     /*Displays the received message*/
 
@@ -52,7 +54,7 @@ function displayMessage(msg)
     </div>
     `;
 
-    msg_list_div.insertAdjacentHTML("beforeend", html);
+    msg_list_div.insertAdjacentHTML(atEnd ? "beforeend" : "afterbegin", html);
 }
 
 function msgListScroll()
@@ -68,20 +70,19 @@ function msgListScroll()
         //Checking the scroll status
         if(!paginationSemaphore)
         {
-            if(msg_list_div.scrollTop <= 200)
-            {
-                paginationSemaphore = false;
-                loadPrevPage();
-            }
-            else if(Math.abs(msg_list_div.scrollHeight - msg_list_div.scrollTop - msg_list_div.clientHeight) <= 200)
+            if(msg_list_div.scrollTop <= pageLimit)
             {
                 paginationSemaphore = true;
-                loadNextPage();
+                loadPrevPage();
+            }
+            else if(Math.abs(msg_list_div.scrollHeight - msg_list_div.scrollTop - msg_list_div.clientHeight) <= pageLimit)
+            {
+                //paginationSemaphore = true;
+                //loadNextPage();
             }
         }
 
         console.log(`${msg_list_div.scrollHeight - msg_list_div.scrollTop}, ${msg_list_div.clientHeight}`);
-
 
         msgListScroll();
     })
@@ -91,23 +92,38 @@ function loadNextPage()
 {
     /*Loads the next page of messages*/
 
-    console.log("Loading Next Page");
-    paginationSemaphore = false;
+    console.log("Loading next page");
+
+    //Emitting the request for next page
+    socket.emit("getNextPage", {lastPageIndex: currPage[currPage.length - 1].index});
 }
 
 function loadPrevPage()
 {
     /*Loads the previous page of messages*/
-
-    console.log("Loading the previous page");
-    paginationSemaphore = false;
+    
+    console.log(`Loading the previous page. ${firstMsgIndex}`);
+    if(firstMsgIndex != 0)
+    {
+        //Emitting request for prevPage
+        socket.emit("getPrevPage", {firstPageIndex: firstMsgIndex});
+    }
 }
 
 function leaveRoom()
 {
     /*Leaves the currently joined room*/
 
+}
+
+function sendDummyMsgs()
+{
+    /*Sends dummy messages. For testing and debugging purposes only*/
     
+    for(let i = 0; i < 100; ++i)
+    {
+        socket.emit("sendMessage", {message: `Message ${i+1}`, username});
+    }
 }
 
 /*************************Script*******************/
@@ -135,17 +151,51 @@ const socket = io(serverSocketUrl, {
 socket.on("Room Connection", (resp) => {
   
     if(!resp.success)
-        console.log(resp)
+        alert(resp.error);
     else
     {
-        console.log(resp)
-        //Displaying the message history
-        resp.msgs.forEach((msg) => displayMessage(msg));
+        console.log(resp.msgs.length)
+        if(resp.msgs.length > 0)
+        {
+            firstMsgIndex = resp.msgs[0].index;
+            lastMsgIndex = resp.msgs[resp.msgs.length-1].index;
+            
+            //Displaying the message history
+            resp.msgs.forEach((msg) => displayMessage(msg, true));
+        }
+        else
+        {
+            firstMsgIndex = -1;
+            lastMsgIndex = -1;
+        }
+
+        //Handles scrolling for pagination
+        msgListScroll();
     }
 });
 
 //Get message
-socket.on("getMessage", displayMessage); 
+socket.on("getMessage", (msg) => {
+    displayMessage(msg, true);
+    lastMsgIndex++;
+});
 
-//Handles scrolling for pagination
-msgListScroll();
+//Get previous page
+socket.on("prevPage", (page) => {
+
+    if(page.success && page.msgs.length > 0)
+    {
+        firstMsgIndex = page.msgs[0].index; //Setting the new current page
+        //Displaying the previous page messages
+        for(let i = page.msgs.length-1; i >= 0; --i)
+        {
+            displayMessage(page.msgs[i], false);
+        }
+    }
+
+    //Releasing the semaphore
+    paginationSemaphore = false;
+});
+
+//Getting the next page
+socket.on("nextPage", (page) => console.log(page));
