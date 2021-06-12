@@ -10,6 +10,8 @@ let paginationSemaphore = false; //A semaphore to prevent multiple page requests
 let firstMsgIndex; //The index of the currently displayed 1st message
 let lastMsgIndex; //The index of the currently displayed last message
 
+const leaveRoomUrl = "/chatroom/leaveroom"; //The api endpoint to leave the current room
+
 
 /*************************Funtions*******************/
 function parseCookies()
@@ -114,6 +116,19 @@ function leaveRoom()
 {
     /*Leaves the currently joined room*/
 
+    //Disconnecting the socket
+    socket.disconnect();
+
+    //Clearing the cookies
+    const leaveRoomPromise = fetch(leaveRoomUrl, {
+        method: "GET"
+    });
+    leaveRoomPromise.then(() => {
+        console.log(document.cookie)
+        //Redirecting to home page
+        window.location.replace(homeUrl);
+    })
+    .catch((err) => alert(err));
 }
 
 function sendDummyMsgs()

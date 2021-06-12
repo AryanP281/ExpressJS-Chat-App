@@ -110,7 +110,11 @@ function leaveRoom(req : express.Request, resp : express.Response)
 {
     /*Leaves the given room*/
 
-    
+    //Clearing the client cookies
+    resp.clearCookie("roomToken");
+    resp.clearCookie("roomPublicId");
+
+    resp.status(200).json({success:true});
 }
 
 function removeRoom(room : Room)
@@ -122,4 +126,4 @@ function removeRoom(room : Room)
 }
 
 /*******************************Exports***************************/
-export {createRoom, addToRoom, joinRoom, removeRoom};
+export {createRoom, addToRoom, joinRoom, removeRoom, leaveRoom};

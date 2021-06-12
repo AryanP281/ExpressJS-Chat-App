@@ -48,7 +48,6 @@ function connectClient(socket : io.Socket)
         })
    })
    .catch((err) => {
-        console.log(err)
         socket.emit("Room Connection", {success:false,error:err})
    });
 

@@ -59,7 +59,7 @@ class Room
         socket.on("sendMessage", (data) => roomObjRef.broadcastMessage(data, roomObjRef, userId));
         socket.on("disconnect", () => roomObjRef.socketDisconnected(socket, roomObjRef));
         socket.on("getPrevPage", (data) => roomObjRef.getPrevPage(data, socket, roomObjRef));
-        //socket.on("getNextPage", (data) => roomObjRef.getNextPage(data, socket, roomObjRef));
+        socket.on("getNextPage", (data) => roomObjRef.getNextPage(data, socket, roomObjRef));
 
         this.userSockets.set(userId, socket);
 
@@ -93,6 +93,17 @@ class Room
         
 
         return prom;
+    }
+
+    public removeUserSocket(userId: string) : boolean
+    {
+        /*Removes the socket used by the given user*/
+
+        if(!this.userSockets.has(userId))
+            return false;
+
+        this.userSockets.delete(userId);
+        return true;
     }
 
     /*******************************Functions***************************** */

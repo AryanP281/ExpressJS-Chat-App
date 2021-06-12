@@ -2,7 +2,7 @@
 /*******************************Imports***************************/
 import express from "express"
 import {verifyUserToken} from "../Middleware"
-import {createRoom, joinRoom} from "../Controllers/ChatroomController"
+import {createRoom, joinRoom, leaveRoom} from "../Controllers/ChatroomController"
 
 /*******************************Variables***************************/
 const router : express.Router = express.Router();
@@ -10,7 +10,7 @@ const router : express.Router = express.Router();
 /*******************************Routes***************************/
 router.get("/createroom", verifyUserToken, createRoom);
 router.post("/joinroom", verifyUserToken, joinRoom);
-router.post("/leaveRoom", verifyUserToken, )
+router.get("/leaveroom", verifyUserToken, leaveRoom)
 
 /*******************************Exports***************************/
 export {router as ChatroomApiRouter};
